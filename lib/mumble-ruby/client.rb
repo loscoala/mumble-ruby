@@ -308,8 +308,8 @@ module Mumble
 		@encoderopus.vbr_rate = 0 # CBR
 		@encoderopus.bitrate = @config.bitrate
 		@encodercelt = Celt::Encoder.new @config.sample_rate, @config.sample_rate / 100, 1
-		#@encodercelt.prediction_request = 0
-		@encodercelt.vbr_rate = @config.bitrate
+		@encodercelt.prediction_request = 0
+		#@encodercelt.vbr_rate = 30000
     end
 
     def version_exchange
@@ -333,7 +333,8 @@ module Mumble
 		if message.opus then
 			@codec = CODEC_OPUS
 		else
-			@codec = [CODEC_ALPHA, CODEC_BETA][[message.alpha, message.beta].index(@encodercelt.bitstream_version)]
+			@codec = CODEC_BETA
+			#@codec = [CODEC_ALPHA, CODEC_BETA][[message.alpha, message.beta].index(@encodercelt.bitstream_version)]
 		end
     end
 

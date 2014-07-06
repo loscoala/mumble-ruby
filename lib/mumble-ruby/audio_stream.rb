@@ -17,7 +17,7 @@ module Mumble
 		@num_frames = 5
 		@compressed_size = [@encoder.vbr_rate / 800, 127].min
 	  end
-	  @compressed_size = 960
+	  #@compressed_size = 960
       @pds = PacketDataStream.new
       @volume = 1.0
 

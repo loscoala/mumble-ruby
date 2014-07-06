@@ -41,6 +41,7 @@ module Mumble
 			@opus = []
 			@encoder = []
 			@queue = []
+			@num_frames = []
 			@seq = 0
 			@pds = PacketDataStream.new
 			@plqueue = Queue.new
@@ -88,9 +89,17 @@ module Mumble
 				end
 			
 				if @encoder[source] == nil then
-					@encoder[source] = Opus::Encoder.new @enc_sample_rate, @enc_sample_rate / 100, 1
-					@encoder[source].vbr_rate = 0 # CBR
-					@encoder[source].bitrate = @enc_bitrate
+					if @type == 4 then
+						@encoder[source] = Opus::Encoder.new @enc_sample_rate, @enc_sample_rate / 100, 1
+						@encoder[source].vbr_rate = 0 # CBR
+						@encoder[source].bitrate = @enc_bitrate
+						@num_frames[source]=1
+					else
+						@encoder[source] = Celt::Encoder.new @enc_sample_rate, @enc_sample_rate / 100, 1
+						@encoder[source].prediction_request = 0
+						#@encodercelt.vbr_rate = 30000
+						@num_frames[source] = 5
+					end
 				end
 			
 				if @queue[source] == nil then
