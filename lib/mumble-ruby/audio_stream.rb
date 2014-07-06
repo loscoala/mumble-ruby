@@ -9,7 +9,15 @@ module Mumble
       @file = File.open(file, 'rb')
       @conn = connection
       @seq = 0
-      @compressed_size = 960
+ 	  # check if Opus (4)
+	  if @type == 4 then
+		@num_frames = 1
+		@compressed_size = 960
+	  else
+		@num_frames = 5
+		@compressed_size = [@encoder.vbr_rate / 800, 127].min
+	  end
+	  @compressed_size = 960
       @pds = PacketDataStream.new
       @volume = 1.0
 
@@ -49,10 +57,12 @@ module Mumble
       @seq += 1
       @pds.put_int @seq
 
-      frame = @queue.pop
-      len = frame.size
-      @pds.put_int len
-      @pds.append_block frame
+	  @num_frames.times do |i|
+		frame = @queue.pop
+		len = frame.size
+		@pds.put_int len
+		@pds.append_block frame
+	  end
 
       size = @pds.size
       @pds.rewind

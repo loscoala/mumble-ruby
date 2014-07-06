@@ -10,6 +10,8 @@ module Mumble
     attr_reader :users, :channels, :connected
 
     CODEC_OPUS = 4
+	CODEC_ALPHA = 0
+	CODEC_BETA = 3
 
     def initialize(host, port=64738, username="RubyClient", password="")
       @users, @channels = {}, {}
@@ -35,9 +37,9 @@ module Mumble
       @conn = Connection.new @config.host, @config.port, @cert_manager
       @conn.connect
 
-      create_encoder
       version_exchange
       authenticate
+      create_encoder
       init_callbacks
 
       @read_thread = spawn_thread :read
@@ -45,7 +47,8 @@ module Mumble
     end
 
     def disconnect
-      @encoder.destroy
+      @encoderopus.destroy
+      @encodercelt.destroy
       @read_thread.kill
       @ping_thread.kill
 			unless @rsh == nil then
@@ -70,7 +73,11 @@ module Mumble
 
     def stream_raw_audio(file)
       raise NoSupportedCodec unless @codec
-      AudioStream.new(@codec, 0, @encoder, file, @conn)
+	  if @codec == 4 then
+		AudioStream.new(@codec, 0, @encoderopus, file, @conn)
+	  else
+		AudioStream.new(@codec, 0, @encodercelt, file, @conn)
+	  end
     end
 
 	def receive_raw_audio(file)
@@ -143,7 +150,11 @@ module Mumble
 	  on_udp_tunnel do |m|
 	    @rsh.process_udp_tunnel m
 	  end
-	  AudioCopyStream.new(@codec, 0, @encoder, source, @conn)
+	  if @codec == 4 then
+		AudioStream.new(@codec, 0, @encoderopus, file, @conn)
+	  else
+		AudioStream.new(@codec, 0, @encodercelt, file, @conn)
+	  end
 	end
 
     Messages.all_types.each do |msg_type|
@@ -292,10 +303,13 @@ module Mumble
       end
     end
 
-    def create_encoder
-      @encoder = Opus::Encoder.new @config.sample_rate, @config.sample_rate / 100, 1
-      @encoder.vbr_rate = @config.bitrate # CBR
-      @encoder.bitrate = @config.bitrate
+    def create_encoder 
+		@encoderopus = Opus::Encoder.new @config.sample_rate, @config.sample_rate / 100, 1
+		@encoderopus.vbr_rate = 0 # CBR
+		@encoderopus.bitrate = @config.bitrate
+		@encodercelt = Celt::Encoder.new @config.sample_rate, @config.sample_rate / 100, 1
+		#@encodercelt.prediction_request = 0
+		@encodercelt.vbr_rate = @config.bitrate
     end
 
     def version_exchange
@@ -316,7 +330,11 @@ module Mumble
     end
 
     def codec_negotiation(message)
-      @codec = CODEC_OPUS if message.opus
+		if message.opus then
+			@codec = CODEC_OPUS
+		else
+			@codec = [CODEC_ALPHA, CODEC_BETA][[message.alpha, message.beta].index(@encodercelt.bitstream_version)]
+		end
     end
 
     def channel_id(channel)
